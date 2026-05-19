@@ -1,0 +1,82 @@
+name: OFFApi
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "offapi/**"
+      - ".github/workflows/offapi.yml"
+
+env:
+  IMAGE: wannagotonorway/offapi
+
+jobs:
+  build-push:
+    name: Build & Push offapi
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./offapi
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-manifests:
+    name: Update k8s manifests offapi
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Update image tag in base manifest
+        run: |
+          TAG=${{ needs.build-push.outputs.tag }}
+          sed -i "s|image: .*offapi:.*|image: wannagotonorway/offapi:${TAG}|" apps/offapi/deployment.yaml
+          echo "Updated image to ${TAG}"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/offapi/deployment.yaml
+          git diff --staged --quiet && echo "No changes" && exit 0
+          git commit -m "chore: bump offapi image to ${{ needs.build-push.outputs.tag }}"
+          BRANCH=main
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH"
+            git rebase "origin/$BRANCH" || { git rebase --abort; exit 1; }
+            if git push "origin" "$BRANCH"; then
+              exit 0
+            fi
+            echo "Push failed (attempt $attempt / 3), retry…"
+            sleep "$((attempt * 3))"
+          done
+          exit 1

@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-config
+  namespace: gatus
+data:
+  config.yaml: |
+    web:
+      port: 8080
+
+    storage:
+      type: sqlite
+      path: /data/gatus.db
+
+    endpoints:
+      - name: OFF Data Mirror
+        group: Our Mirror
+        url: https://data.off.wanna.community
+        interval: 1m
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 5000"
+
+      - name: OFF API Mirror
+        group: Our Mirror
+        url: https://api.off.wanna.community/health
+        interval: 1m
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 1000"
+
+      - name: OFF Main Website
+        group: Open Food Facts
+        url: https://world.openfoodfacts.org
+        interval: 5m
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 10000"
+
+      - name: OFF API v2
+        group: Open Food Facts
+        url: https://world.openfoodfacts.org/api/v2/product/3017620422003
+        interval: 5m
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 5000"
+
+      - name: OFF Static (Data)
+        group: Open Food Facts
+        url: https://static.openfoodfacts.org
+        interval: 5m
+        conditions:
+          - "[STATUS] == 200"
+
+      - name: OFF Search API
+        group: Open Food Facts
+        url: https://search.openfoodfacts.org
+        interval: 5m
+        conditions:
+          - "[STATUS] < 500"
+          - "[RESPONSE_TIME] < 10000"

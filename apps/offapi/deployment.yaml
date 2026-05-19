@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: offapi
+  namespace: offapi
+spec:
+  replicas: 4
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: offapi
+  template:
+    metadata:
+      labels:
+        app: offapi
+    spec:
+      containers:
+        - name: offapi
+          image: wannagotonorway/offapi:sha-840dc4a
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 2023
+          env:
+            - name: PORT
+              value: "2023"
+            - name: MONGO_URI
+              value: "mongodb://mongo-off-svc.offmirror:27017"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 12
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30

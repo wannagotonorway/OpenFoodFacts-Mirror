@@ -1,0 +1,54 @@
+# Standalone MongoDB для OFF данных — без replica set, только чтение после импорта.
+# Данные публичные (ODbL), авторизация не нужна снаружи — сервис только ClusterIP.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-off
+  namespace: offmirror
+spec:
+  serviceName: mongo-off
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-off
+  template:
+    metadata:
+      labels:
+        app: mongo-off
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: mongod
+          image: docker.io/library/mongo:8
+          imagePullPolicy: IfNotPresent
+          args: ["--bind_ip_all", "--wiredTigerCacheSizeGB", "4"]
+          ports:
+            - name: mongodb
+              containerPort: 27017
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+          resources:
+            requests:
+              cpu: 200m
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          livenessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 5
+          readinessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: offmirror-mongo-data

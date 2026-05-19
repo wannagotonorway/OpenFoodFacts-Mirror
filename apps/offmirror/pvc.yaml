@@ -1,0 +1,13 @@
+# Хранит дампы OFF: MongoDB (~9GB), JSONL (~8GB), CSV (~2GB), delta (~1GB).
+# 50Gi с запасом для ротации дельт.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: offmirror-data
+  namespace: offmirror
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
