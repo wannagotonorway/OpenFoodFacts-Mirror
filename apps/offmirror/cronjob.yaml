@@ -43,6 +43,7 @@ spec:
                   echo ">>> Fetching delta index"
                   wget -q -O /tmp/delta-index.txt "$BASE/delta/index.txt" || true
                   if [ -f /tmp/delta-index.txt ]; then
+                    cp /tmp/delta-index.txt /data/delta/index.txt
                     while IFS= read -r DELTA; do
                       [ -z "$DELTA" ] && continue
                       DEST="/data/delta/$(basename $DELTA)"

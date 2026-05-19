@@ -8,8 +8,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/wannagotonorway/ServersCFG
-    targetRevision: master
+    repoURL: https://github.com/wannagotonorway/openfoodfacts-mirror
+    targetRevision: main
     path: apps/offapi
   destination:
     server: https://kubernetes.default.svc
