@@ -1,0 +1,92 @@
+# Запускается в 04:00 UTC — через час после sync CronJob (03:00).
+# Импортирует только новые delta файлы в MongoDB через mongoimport --upsert.
+# Список уже импортированных хранится в /data/delta/.imported
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: offmirror-deltaimport
+  namespace: offmirror
+spec:
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 7200  # 2 часа максимум
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: deltaimport
+              image: docker.io/library/mongo:8
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/bash", "-ec"]
+              args:
+                - |
+                  DELTA_DIR="/data/delta"
+                  IMPORTED_LIST="$DELTA_DIR/.imported"
+                  MONGO_HOST="mongo-off-svc.offmirror:27017"
+
+                  touch "$IMPORTED_LIST"
+                  echo "=== Delta import start $(date) ==="
+
+                  # Читаем index.txt — список актуальных delta файлов от OFF
+                  if [ ! -f "$DELTA_DIR/index.txt" ]; then
+                    echo "No index.txt found, skipping"
+                    exit 0
+                  fi
+
+                  IMPORTED=0
+                  SKIPPED=0
+
+                  while IFS= read -r FILENAME; do
+                    [ -z "$FILENAME" ] && continue
+                    BASENAME=$(basename "$FILENAME")
+                    FILEPATH="$DELTA_DIR/$BASENAME"
+
+                    # Пропускаем уже импортированные
+                    if grep -qxF "$BASENAME" "$IMPORTED_LIST"; then
+                      SKIPPED=$((SKIPPED + 1))
+                      continue
+                    fi
+
+                    if [ ! -f "$FILEPATH" ]; then
+                      echo "File not found locally: $BASENAME, skipping"
+                      continue
+                    fi
+
+                    echo ">>> Importing $BASENAME"
+                    mongoimport \
+                      --host="$MONGO_HOST" \
+                      --db=off \
+                      --collection=products \
+                      --mode=upsert \
+                      --upsertFields=code \
+                      --gzip \
+                      --file="$FILEPATH"
+
+                    if [ $? -eq 0 ]; then
+                      echo "$BASENAME" >> "$IMPORTED_LIST"
+                      IMPORTED=$((IMPORTED + 1))
+                      echo "<<< Done: $BASENAME"
+                    else
+                      echo "!!! Failed: $BASENAME"
+                    fi
+                  done < "$DELTA_DIR/index.txt"
+
+                  echo "=== Delta import done $(date) — imported: $IMPORTED, skipped: $SKIPPED ==="
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: offmirror-data

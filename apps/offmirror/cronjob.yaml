@@ -1,0 +1,71 @@
+# Синхронизация каждый день в 03:00 UTC.
+# rsync OFF недоступен извне — используем wget по HTTPS.
+# Дампы обновляются ежедневно, wget -N пропускает если файл не изменился.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: offmirror-sync
+  namespace: offmirror
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 21600  # 6 часов максимум
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: wget
+              image: docker.io/library/alpine:3.19
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  apk add --no-cache wget
+                  BASE="https://static.openfoodfacts.org/data"
+                  echo "=== Starting OFF mirror sync $(date) ==="
+                  mkdir -p /data/delta
+
+                  # Основные дампы — wget -N обновляет только если изменился
+                  for FILE in \
+                    openfoodfacts-mongodbdump.gz \
+                    openfoodfacts-products.jsonl.gz \
+                    en.openfoodfacts.org.products.csv.gz \
+                    data-fields.txt; do
+                    echo ">>> $FILE"
+                    wget -N -q --show-progress -P /data "$BASE/$FILE" || true
+                  done
+
+                  # Дельты за последние 14 дней
+                  echo ">>> Fetching delta index"
+                  wget -q -O /tmp/delta-index.txt "$BASE/delta/index.txt" || true
+                  if [ -f /tmp/delta-index.txt ]; then
+                    while IFS= read -r DELTA; do
+                      [ -z "$DELTA" ] && continue
+                      DEST="/data/delta/$(basename $DELTA)"
+                      if [ ! -f "$DEST" ]; then
+                        echo ">>> delta: $DELTA"
+                        wget -q --show-progress -O "$DEST" "$BASE/delta/$DELTA" || true
+                      fi
+                    done < /tmp/delta-index.txt
+                  fi
+
+                  echo "=== Sync done $(date) ==="
+                  du -sh /data/
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: offmirror-data

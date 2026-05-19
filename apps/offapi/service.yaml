@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: offapi
+  namespace: offapi
+spec:
+  selector:
+    app: offapi
+  ports:
+    - name: http
+      port: 80
+      targetPort: 2023

@@ -1,0 +1,12 @@
+# OFF MongoDB данные: дамп 14GB сжатый → ~40GB в базе. 50Gi с запасом.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: offmirror-mongo-data
+  namespace: offmirror
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi

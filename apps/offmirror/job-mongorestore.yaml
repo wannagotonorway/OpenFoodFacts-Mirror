@@ -1,0 +1,52 @@
+# Запускать вручную после первого sync:
+#   kubectl apply -f apps/offmirror/job-mongorestore.yaml
+# Или пересоздать при необходимости повторного импорта.
+# mongorestore читает .gz архив напрямую без распаковки на диск.
+# Время импорта: ~1-2 часа в зависимости от диска.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: off-mongorestore
+  namespace: offmirror
+spec:
+  ttlSecondsAfterFinished: 86400  # удалить через 24ч после завершения
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mongorestore
+          image: docker.io/library/mongo:8
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              echo "=== Starting mongorestore $(date) ==="
+              echo "Dump size: $(du -sh /dumps/openfoodfacts-mongodbdump.gz)"
+
+              mongorestore \
+                --host=mongo-off-svc:27017 \
+                --gzip \
+                --archive=/dumps/openfoodfacts-mongodbdump.gz \
+                --drop \
+                --numParallelCollections=4
+
+              echo "=== mongorestore done $(date) ==="
+              echo "DB size:"
+              mongosh --host=mongo-off-svc:27017 --quiet \
+                --eval "db.adminCommand({listDatabases:1}).databases.forEach(d => print(d.name, d.sizeOnDisk))"
+          volumeMounts:
+            - name: dumps
+              mountPath: /dumps
+              readOnly: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: dumps
+          persistentVolumeClaim:
+            claimName: offmirror-data
+            readOnly: true
