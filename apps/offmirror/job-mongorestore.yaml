@@ -1,15 +1,10 @@
-# Запускать вручную после первого sync:
-#   kubectl apply -f apps/offmirror/job-mongorestore.yaml
-# Или пересоздать при необходимости повторного импорта.
-# mongorestore читает .gz архив напрямую без распаковки на диск.
-# Время импорта: ~1-2 часа в зависимости от диска.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: off-mongorestore
   namespace: offmirror
 spec:
-  ttlSecondsAfterFinished: 86400  # удалить через 24ч после завершения
+  ttlSecondsAfterFinished: 86400
   template:
     spec:
       restartPolicy: OnFailure

@@ -14,7 +14,6 @@ data:
       autoindex_exact_size off;
       autoindex_localtime on;
 
-      # Заголовки атрибуции ODbL
       add_header X-Data-Source "Open Food Facts - https://world.openfoodfacts.org" always;
       add_header X-Data-License "ODbL - https://opendatacommons.org/licenses/odbl/1.0/" always;
 
@@ -22,7 +21,6 @@ data:
         try_files $uri $uri/ =404;
       }
 
-      # Отдаём большие файлы без буферизации в память
       location ~* \.(gz|jsonl|csv|bson)$ {
         proxy_buffering off;
         sendfile on;
