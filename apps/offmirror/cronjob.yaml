@@ -1,6 +1,3 @@
-# Синхронизация каждый день в 03:00 UTC.
-# rsync OFF недоступен извне — используем wget по HTTPS.
-# Дампы обновляются ежедневно, wget -N пропускает если файл не изменился.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -13,7 +10,7 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 21600  # 6 часов максимум
+      activeDeadlineSeconds: 21600
       template:
         spec:
           restartPolicy: OnFailure
@@ -29,7 +26,7 @@ spec:
                   echo "=== Starting OFF mirror sync $(date) ==="
                   mkdir -p /data/delta
 
-                  # Основные дампы — wget -N обновляет только если изменился
+                  # Основные дампы - wget -N обновляет только если изменился
                   for FILE in \
                     openfoodfacts-mongodbdump.gz \
                     openfoodfacts-products.jsonl.gz \

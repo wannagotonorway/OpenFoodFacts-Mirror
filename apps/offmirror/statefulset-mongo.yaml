@@ -1,5 +1,3 @@
-# Standalone MongoDB для OFF данных — без replica set, только чтение после импорта.
-# Данные публичные (ODbL), авторизация не нужна снаружи — сервис только ClusterIP.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

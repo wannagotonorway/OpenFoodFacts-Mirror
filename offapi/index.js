@@ -2,8 +2,8 @@ const express = require("express");
 const { MongoClient } = require("mongodb");
 const rateLimit = require("express-rate-limit");
 
-const PORT = process.env.PORT || 2023;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://mongo-off-svc.offmirror:27017";
+const PORT = process.env.PORT;
+const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = "off";
 const COLLECTION = "products";
 
@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// GET /api/v2/product/:barcode — OFF-совместимый эндпоинт
+// GET /api/v2/product/:barcode - OFF-совместимый эндпоинт
 // Совместимость: HTTP 200 для not found (как у OFF), поддержка ?fields=
 app.get("/api/v2/product/:barcode", async (req, res) => {
   const { barcode } = req.params;
@@ -53,7 +53,7 @@ app.get("/api/v2/product/:barcode", async (req, res) => {
   }
 });
 
-// GET /api/v2/search?code=&fields= — поиск по нескольким штрихкодам
+// GET /api/v2/search?code=&fields= - поиск по нескольким штрихкодам
 app.get("/api/v2/search", async (req, res) => {
   const { code, fields, page = 1, page_size = 24 } = req.query;
 
@@ -85,7 +85,7 @@ app.get("/api/v2/search", async (req, res) => {
   }
 });
 
-// GET /api/v3/product/:barcode — OFF API v3 (правильные HTTP коды, structured response)
+// GET /api/v3/product/:barcode - OFF API v3 (правильные HTTP коды, structured response)
 app.get("/api/v3/product/:barcode", async (req, res) => {
   const { barcode } = req.params;
   const { fields } = req.query;
@@ -128,7 +128,7 @@ app.get("/api/v3/product/:barcode", async (req, res) => {
   }
 });
 
-// GET /api/v3/search — v3 поиск
+// GET /api/v3/search - v3 поиск
 app.get("/api/v3/search", async (req, res) => {
   const { code, fields, page = 1, page_size = 24 } = req.query;
 
@@ -185,8 +185,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// Сначала поднимаем сервер, потом подключаемся к MongoDB с ретраями.
-// Так startup probe проходит даже пока MongoDB ещё не готов.
 app.listen(PORT, () => console.log(`offapi listening on :${PORT}`));
 
 async function connectMongo() {

@@ -1,6 +1,3 @@
-# Запускается в 04:00 UTC — через час после sync CronJob (03:00).
-# Импортирует только новые delta файлы в MongoDB через mongoimport --upsert.
-# Список уже импортированных хранится в /data/delta/.imported
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -13,7 +10,7 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 7200  # 2 часа максимум
+      activeDeadlineSeconds: 7200 
       template:
         spec:
           restartPolicy: OnFailure
@@ -31,7 +28,7 @@ spec:
                   touch "$IMPORTED_LIST"
                   echo "=== Delta import start $(date) ==="
 
-                  # Читаем index.txt — список актуальных delta файлов от OFF
+                  # Читаем index.txt - список актуальных delta файлов от OFF
                   if [ ! -f "$DELTA_DIR/index.txt" ]; then
                     echo "No index.txt found, skipping"
                     exit 0
@@ -75,7 +72,7 @@ spec:
                     fi
                   done < "$DELTA_DIR/index.txt"
 
-                  echo "=== Delta import done $(date) — imported: $IMPORTED, skipped: $SKIPPED ==="
+                  echo "=== Delta import done $(date) - imported: $IMPORTED, skipped: $SKIPPED ==="
               volumeMounts:
                 - name: data
                   mountPath: /data

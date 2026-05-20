@@ -1,5 +1,3 @@
-# Хранит дампы OFF: MongoDB (~9GB), JSONL (~8GB), CSV (~2GB), delta (~1GB).
-# 50Gi с запасом для ротации дельт.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
